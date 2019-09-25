@@ -41,7 +41,17 @@ header <- dashboardHeader(title = "Bigfoot Sightings"
 
 
 # Dashboard body ----------------------------------------------
-body <- dashboardBody(tabItems(
+body <- dashboardBody(
+    tags$head(tags$style(HTML("
+    @import url('https://fonts.googleapis.com/css?family=Mansalva&display=swap');
+      .main-header .logo {
+        font-family: 'Mansalva', cursive;
+        font-weight: bold;
+        font-size: 24px;
+      }
+    ")))
+    ,
+    tabItems(
     
     # Plot page ----------------------------------------------
     tabItem("plot",
@@ -69,7 +79,7 @@ body <- dashboardBody(tabItems(
 )
 )
 
-ui <- dashboardPage(header, sidebar, body)
+ui <- dashboardPage(header, sidebar, body, skin='green')
 
 # Define server function required to create plots and value boxes -----
 server <- function(input, output) {
