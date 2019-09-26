@@ -4,6 +4,8 @@ library(reshape2)
 library(dplyr)
 library(plotly)
 library(shinythemes)
+library(shinyWidgets)
+library(shinyalert)
 bigfoot <- read.csv("bigfoot.csv", check.names=FALSE)
 # Application header & title ----------------------------------------------
 header <- dashboardHeader(title = "Bigfoot Sightings"
@@ -14,12 +16,14 @@ header <- dashboardHeader(title = "Bigfoot Sightings"
     # Sidebar with a slider input for number of bins 
     # Dashboard Sidebar ----------------------------------------------
     sidebar <- dashboardSidebar(
+        useShinyalert(),
         sidebarMenu(
             id = "tabs",
             
             # # Menu Items ----------------------------------------------
-            # menuItem("Plot", icon = icon("bar-chart"), tabName = "plot"),
-            menuItem("Table", icon = icon("table"), tabName = "table")
+            menuItem("Intro", icon = icon("tree"), tabName = "intro"),
+            menuItem("Plot", icon = icon("bar-chart"), tabName = "plot"),
+            menuItem("Table", icon = icon("table"), tabName = "table"),
             # 
             # # Inputs: select variables to plot ----------------------------------------------
             # selectInput("worldSelect",
@@ -30,14 +34,19 @@ header <- dashboardHeader(title = "Bigfoot Sightings"
             #             selected = c("Naboo", "Tatooine")),
             # 
             # # Birth year Selection ----------------------------------------------
-            # sliderInput("birthSelect",
-            #             "Birth Year:",
-            #             min = min(starwars.load$birth_year, na.rm = T),
-            #             max = max(starwars.load$birth_year, na.rm = T),
-            #             value = c(min(starwars.load$birth_year, na.rm = T), max(starwars.load$birth_year, na.rm = T)),
-            #             step = 1)
+            chooseSliderSkin("HTML5", color="SaddleBrown"),
+            sliderInput("slider2", label = h4("Sighting Years"), min = 1920, 
+                        max = 2018, value = c(1920, 2018), sep = ''),
+            checkboxGroupButtons(
+                inputId = "class_button", label = "Make a choice :", 
+                choices = c("Class A", "Class B"),
+                selected = c("Class A", "Class B"),
+                justified = TRUE, status = "primary",
+                checkIcon = list(yes = icon("ok", lib = "glyphicon"), no = icon("remove", lib = "glyphicon"))
+            )
         )
     )
+
 
 
 # Dashboard body ----------------------------------------------
@@ -52,7 +61,16 @@ body <- dashboardBody(
     ")))
     ,
     tabItems(
-    
+    tabItem("intro",
+            fluidPage(
+              
+                    box(
+                        title = "Alignment", status = "primary", solidHeader = TRUE,
+                        imageOutput("image")
+                    )
+                )
+            )
+            ,
     # Plot page ----------------------------------------------
     tabItem("plot",
             
@@ -83,10 +101,41 @@ ui <- dashboardPage(header, sidebar, body, skin='green')
 
 # Define server function required to create plots and value boxes -----
 server <- function(input, output) {
-    data <- reactive({sub <- subset(bigfoot, select = c('state','season','date','title','classification','number')
+    
+    # observeEvent(input$class_button, {
+    #     if (isFALSE(input$class_button)) {
+    #                 # Show a modal when the button is pressed
+    #     shinyalert("Oops!", "Something went wrong.", type = "error")
+    #     }
+        
+        observeEvent(input$class_button, {
+            if (length(input$class_button)==0) {
+            shinyalert("Oops!", "Something went wrong.", type = "error")
+            }
+        }
+        )
+    # })
+    output$image <- renderImage({
+            return(list(
+                src = "sasquatch.jpg",
+                filetype = "image/jpeg",
+                alt = "Is this Bigfoot?"
+            ))
+        },deleteFile = FALSE)
+        
+    # output$picture <- renderImage({return(list(src = "sasquatch.jpg",contentType = "image/jpg",
+    #                                            alt = "Alignment"))}, deleteFile = FALSE)
+    
+    data <- reactive({
+        validate(
+            need(input$class_button, "Select at least one class")
+        )
+        sub <- subset(bigfoot, select = c('state','season','date','title','classification', 'year')
     ) 
-    colnames(sub) <- c('State', 'Season', 'Date', 'Description', 'Class','Number')
-    sub
+        colnames(sub) <- c('State', 'Season', 'Date', 'Description', 'Class', 'Year')
+        sub <- sub[(sub['Year'] >= input$slider2[1]) & (sub['Year'] <= input$slider2[2]),]
+        sub <- subset(sub, Class %in% input$class_button)
+        sub
     
     }
     )
@@ -147,6 +196,10 @@ server <- function(input, output) {
         
         valueBox(subtitle = "Avg Height", value = num, icon = icon("sort-numeric-asc"), color = "green")
     })
+
+
+
+    
 }
 
 # Run the application ----------------------------------------------
