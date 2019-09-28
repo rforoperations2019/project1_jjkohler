@@ -7,17 +7,16 @@ library(shinythemes)
 library(shinyWidgets)
 library(shinyalert)
 library(shinyBS)
-library(RColorBrewer)
+
 bigfoot <- read.csv("bigfoot.csv", check.names=FALSE)
+
 # Application header & title ----------------------------------------------
 header <- dashboardHeader(title = "Bigfoot Sightings",
                           dropdownMenu(type = "messages",
-                                       notificationItem(text = "New Sasquatch sighting!", 
-                                                        icon = icon("users"))
-                          )
-                          
-                          
-)
+                        notificationItem(text = "New Sasquatch sighting!", 
+                        icon = icon("users"))
+                 )
+        )
 
     # Sidebar with a slider input for number of bins 
     # Dashboard Sidebar ----------------------------------------------
@@ -57,7 +56,7 @@ header <- dashboardHeader(title = "Bigfoot Sightings",
             #Class Tooltip ----------------
             bsTooltip(id = "class_button", title = "<strong>Class A</strong><br> <i>Reports of clear sightings.</i><br><br> <strong>Class B</strong><br> <i>Observations without a clear view.</i>",
                       placement = "bottom", trigger = "hover")
-        )
+            )
     )
 
 
@@ -80,6 +79,7 @@ body <- dashboardBody(
     # https://stackoverflow.com/questions/37861234/adjust-the-height-of-infobox-in-shiny-dashboard
     ,
     tabItems(
+    # Intro page ----------------------------------------------
     tabItem("intro",
             fluidPage(
                 fluidRow(column(4,
@@ -91,10 +91,9 @@ body <- dashboardBody(
                 valueBoxOutput("count"),
                 infoBoxOutput("month"),
                 valueBoxOutput("state")
-            )
-            )
-    )
-            ,
+             )
+         )
+    ),
     # Plot page ----------------------------------------------
     tabItem("plot",
             
@@ -104,15 +103,16 @@ body <- dashboardBody(
                 box(plotlyOutput("plot_state"), width = 9)),
             fluidRow(
                 box(plotlyOutput("plot_year"), width = '6'),
-                box(plotlyOutput("plot_month"), width = '3'))
-    ),
+                box(plotlyOutput("plot_month"), width = '3')
+                )
+            ),
     
     # Data Table Page ----------------------------------------------
     tabItem("table",
             fluidPage(
                 box(title = "Reported Bigfoot Sightings", DT::dataTableOutput("table"), width = 12))
+        )
     )
-)
 )
 
 ui <- dashboardPage(header, sidebar, body, skin='green')
@@ -135,6 +135,7 @@ server <- function(input, output) {
         }
       }
     )
+        
 #Render Sasquatch image for landing page
         
     output$image <- renderImage({
@@ -148,7 +149,7 @@ server <- function(input, output) {
 #Filter data table from inputs--------------------------
     
     data <- reactive({
-        #Check for existence of inputs
+        #Check for existence of inputs --------------------------
         validate(
             need(input$class_button, "Select at least one Class"),
             need(input$season, "Select at least one Season")
@@ -163,7 +164,7 @@ server <- function(input, output) {
        }
     )
     
-# Aggregating sightings by state for plotting
+# Aggregating sightings by state for plotting --------------------------
     state_count <- reactive({count <- aggregate(x = data()[c('State','Year')],
                                by = list(states = data()$State),FUN = length)
                             colnames(count) <- c('State', 'Count','Year')
@@ -172,7 +173,7 @@ server <- function(input, output) {
 
     })
     
-# Aggregating sightings by year for plotting
+# Aggregating sightings by year for plotting --------------------------
     year_count <- reactive({count <- aggregate(x = data()[c('State','Year')],
                                                 by = list(years = data()$Year),FUN = length)
     colnames(count) <- c('Year', 'Count','State')
@@ -181,7 +182,7 @@ server <- function(input, output) {
     
     })
     
-# Aggregating sightings by month for plotting
+# Aggregating sightings by month for plotting --------------------------
     month_count <- reactive({count <- aggregate(x = data()[c('State','Month')],
                                                by = list(months = data()$Month),FUN = length)
     colnames(count) <- c('Month1','Count','State')
@@ -190,7 +191,8 @@ server <- function(input, output) {
     count
 
     })
-    # Aggregating sightings by month for sorted by value
+    
+# Aggregating sightings by month for sorted by value --------------------------
     month_max <- reactive({count <- aggregate(x = data()[c('State','Month')],
                                                 by = list(months = data()$Month),FUN = length)
     colnames(count) <- c('Month1','Count','State')
@@ -200,12 +202,10 @@ server <- function(input, output) {
     
     })
      
-    # Data table of Bigfoot Sightings ----------------------------------------------
+# Data table of Bigfoot Sightings ----------------------------------------------
     output$table <- DT::renderDataTable({
         state_count()
     })
-
-
 
 # A plot showing sightings by state -----------------------------    
     output$plot_state <- renderPlotly({
@@ -231,7 +231,7 @@ server <- function(input, output) {
         )
     })
 
-    # A plot showing sightings by month -----------------------------    
+# A plot showing sightings by month -----------------------------    
     output$plot_month<- renderPlotly({
         ggplotly(  
             p3 <- ggplot(month_count(), aes(x = reorder(Month, -Month1), y = Count, label=Month)) +
@@ -245,7 +245,7 @@ server <- function(input, output) {
     })
     
     
-        # Mass mean value box ----------------------------------------------
+# Value Boxes ----------------------------------------------
     output$count <- renderValueBox({
         val <- length(data()$Date)
         valueBox(subtitle = "Total Sightings", value = val, icon = icon("tree"), color = "green")
@@ -263,48 +263,6 @@ server <- function(input, output) {
         valueBox(subtitle = "Most Common State", value = val, icon = icon("flag"), color = "green")
     })
     
-    # output$month <- renderValueBox({
-    #     val <- tail(month_max()$State, n=1)
-    #     mn <- tail(month_max()$Month, n=1)
-    #     cat(val)
-    #     
-    #     valueBox(subtitle = mn, value = val, icon = icon("sort-numeric-asc"), color = "green")
-    # })
-    
-    # output$state <- renderValueBox({
-    #     val <- length(data()$Date)
-    #     
-    #     valueBox(subtitle = "Sightings", value = val, icon = icon("sort-numeric-asc"), color = "green")
-    # })
-    
-
-    
-    # output$state <- renderInfoBox({
-    #     val <- toString(state_count()$states[1])
-    #     cat(val)
-    #     
-    #             infoBox("Avg Mass", value = val, subtitle = paste(nrow(state_count()), "States"), icon = icon("balance-scale"), color = "purple")
-    # })
-    
-    # output$state <- renderInfoBox({
-    #     sw <- swInput()
-    #     num <- round(mean(sw$mass, na.rm = T), 2)
-    #     
-    #     infoBox("Avg Mass", value = num, subtitle = paste(nrow(sw), "characters"), icon = icon("balance-scale"), color = "purple")
-    # })
-    
-    # Height mean value box ----------------------------------------------
-    # output$height <- renderValueBox({
-    #     sw <- swInput()
-    #     num <- round(mean(sw$height, na.rm = T), 2)
-    #     
-    #     valueBox(subtitle = "Avg Height", value = num, icon = icon("sort-numeric-asc"), color = "green")
-    # })
-
-
-
-    
 }
-
 # Run the application ----------------------------------------------
 shinyApp(ui = ui, server = server)

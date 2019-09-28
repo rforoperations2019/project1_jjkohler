@@ -1,0 +1,12 @@
+name: Bigfoot_Dashboard
+title: Bigfoot_Dashboard
+username:
+account: jjkohler
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1257293
+bundleId: 2451257
+url: https://jjkohler.shinyapps.io/Bigfoot_Dashboard/
+when: 1569661273.96057
+asMultiple: FALSE
+asStatic: FALSE
