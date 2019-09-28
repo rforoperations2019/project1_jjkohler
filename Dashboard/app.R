@@ -7,6 +7,7 @@ library(shinythemes)
 library(shinyWidgets)
 library(shinyalert)
 library(shinyBS)
+library(RColorBrewer)
 bigfoot <- read.csv("bigfoot.csv", check.names=FALSE)
 # Application header & title ----------------------------------------------
 header <- dashboardHeader(title = "Bigfoot Sightings",
@@ -97,19 +98,23 @@ body <- dashboardBody(
     # Plot page ----------------------------------------------
     tabItem("plot",
             
-            # Input and Value Boxes ----------------------------------------------
-            fluidRow(
-                infoBoxOutput("mass"),
-                valueBoxOutput("height")
-            ),
-            
+            # # Input and Value Boxes ----------------------------------------------
+            # fluidRow(
+            #     infoBoxOutput("mass"),
+            #     valueBoxOutput("height")
+            # ),
+            # 
             # Plot ----------------------------------------------
             fluidRow(
-                tabBox(title = "Plot",
-                       width = 8,
-                       tabPanel("State", plotlyOutput("plot_state")),
-                       tabPanel("Height", plotlyOutput("plot_height")))
-            )
+                box(plotlyOutput("plot_state"), width = 8)),
+            fluidRow(
+                box(plotlyOutput("plot_year"), width = '7'),
+                box(plotlyOutput("plot_month"), width = '4'))
+                # tabBox(title = "Plot",
+                #        width = 8,
+                #        tabPanel("State", plotlyOutput("plot_state")),
+                #        tabPanel("Height", plotlyOutput("plot_year")))
+            
     ),
     
     # Data Table Page ----------------------------------------------
@@ -122,25 +127,26 @@ body <- dashboardBody(
 
 ui <- dashboardPage(header, sidebar, body, skin='green')
 
-# Define server function required to create plots and value boxes -----
+# Define server function -----
 server <- function(input, output) {
-    #Error if no Season is chosen
+
+#Error if no Season is chosen
         observeEvent(input$season, ignoreNULL = FALSE,{
             if (length(input$season)==0) {
             shinyalert("Oh No!", "The Sasquatch may just hibernate or go south if you don't choose a season.", type = "warning")
         }
-        
-    }
+      }
     )
-    #Error if no Class is chosen 
+    
+#Error if no Class is chosen 
         observeEvent(input$class_button, ignoreNULL = FALSE,{
             if (length(input$class_button)==0) {
             shinyalert("Oops!", "You won't have any sightings if you don't pick at least one class.", type = "error")
-            }
-
         }
-        )
-
+      }
+    )
+#Render Sasquatch image for landing page
+        
     output$image <- renderImage({
             return(list(
                 src = "sasquatch.jpg",
@@ -149,24 +155,25 @@ server <- function(input, output) {
             ))
         }, deleteFile = FALSE)
 
+#Filter data table from inputs--------------------------
     
     data <- reactive({
+        #Check for existence of inputs
         validate(
             need(input$class_button, "Select at least one Class"),
             need(input$season, "Select at least one Season")
         )
-        sub <- subset(bigfoot, select = c('state','season','date','title','classification', 'year', 'season')
-    ) 
-        colnames(sub) <- c('State', 'Season', 'Date', 'Description', 'Class', 'Year', 'Season')
+        sub <- subset(bigfoot, select = c('state','season','date','title','classification','month', 'year')) 
+        colnames(sub) <- c('State', 'Season', 'Date', 'Description', 'Class', 'Month','Year')
         sub <- sub[(sub['Year'] >= input$slider2[1]) & (sub['Year'] <= input$slider2[2]),]
         sub <- subset(sub, Class %in% input$class_button)
         sub <- subset(sub, Season %in% input$season)
         sub
     
-    }
+       }
     )
     
-    # Aggregating from to State Level
+# Aggregating sightings by state for plotting
     state_count <- reactive({count <- aggregate(x = data()[c('State','Year')],
                                by = list(states = data()$State),FUN = length)
                             colnames(count) <- c('State', 'Count','Year')
@@ -174,38 +181,87 @@ server <- function(input, output) {
                             count
 
     })
+    
+# Aggregating sightings by year for plotting
+    year_count <- reactive({count <- aggregate(x = data()[c('State','Year')],
+                                                by = list(years = data()$Year),FUN = length)
+    colnames(count) <- c('Year', 'Count','State')
+    count <- count[order(count$Year),]
+    count
+    
+    })
+    
+# Aggregating sightings by year for plotting
+    month_count <- reactive({count <- aggregate(x = data()[c('State','Month')],
+                                               by = list(months = data()$Month),FUN = length)
+    colnames(count) <- c('Month1','Count','State')
+    count <- count[order(count$Month1),]
+    count$Month <- month.abb[count$Month1]
+    count
+
+    })
      
-    # Data table of characters ----------------------------------------------
+    # Data table of Bigfoot Sightings ----------------------------------------------
     output$table <- DT::renderDataTable({
         data()
     })
 
-    # A plot showing the mass of characters -----------------------------
-    # output$plot_state <- renderPlotly({
-    #     p <- plot_ly(
-    #         x = state_count()$states,
-    #         y = state_count()$Year,
-    #         name = "SF Zoo",
-    #         type = "bar"
-    #     )
-    #     
-    # 
-    # })
-    
+
+
+# A plot showing sightings by state -----------------------------    
     output$plot_state <- renderPlotly({
       ggplotly(  
         p1 <- ggplot(state_count(), aes(x = reorder(State, -Count), y = Count, label=State)) +
-            geom_bar(stat = "identity") +
+            geom_bar(stat = "identity", width = 0.8, color='darkgreen', fill='forestgreen')+
             theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+            ggtitle('Bigfoot Sightings By State')+
             xlab("State") + 
             ylab("Count of Sightings"), tooltip=c('label','y')
       )
     })
 
+# A plot showing sightings by year -----------------------------    
+    output$plot_year <- renderPlotly({
+        ggplotly(  
+            p2 <- ggplot(year_count(), aes(x = Year, y = Count, label=Year)) +
+                geom_line(color='forestgreen') + geom_point(color='saddlebrown', stroke='forestgreen') +
+                theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+                ggtitle('Yearly Sasquatches')+
+                xlab("Year") + 
+                ylab("Count of Sightings"), tooltip=c('label','y')
+        )
+    })
 
-
+    # A plot showing sightings by month -----------------------------    
+    output$plot_month<- renderPlotly({
+        ggplotly(  
+            p3 <- ggplot(month_count(), aes(x = reorder(Month, -Month1), y = Count, label=Month)) +
+                geom_bar(stat = "identity", width = 0.8, color='darkgreen', fill='saddlebrown')+
+                theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+                ggtitle("Bigfoot's Favorite Month")+
+                xlab("Month") + 
+                ylab("Count of Sightings") +
+                coord_flip(), tooltip=c('label','y') 
+        )
+    })
     
     
+    
+    # output$plot_month<- renderPlot({
+    #     theme_set(theme_classic())
+    # p <- ggplot(month_count(), aes(x= Month, y= Count)) +
+    #     geom_point(col="tomato2", size=3)   # Draw points
+    # # geom_segment(aes(x=Month,
+    # #                  xend=Month,
+    # #                  y=min(Count),
+    # #                  yend=max(Count)),
+    # #              linetype="dashed",
+    # #              size=0.1) +   # Draw dashed lines
+    # # labs(title="Dot Plot",
+    # #      subtitle="Make Vs Avg. Mileage",
+    # #      caption="") +
+    # # coord_flip()
+    # })
     # Mass mean info box ----------------------------------------------
     output$count <- renderInfoBox({
         sw <- swInput()
