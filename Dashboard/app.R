@@ -6,6 +6,7 @@ library(plotly)
 library(shinythemes)
 library(shinyWidgets)
 library(shinyalert)
+library(shinyBS)
 bigfoot <- read.csv("bigfoot.csv", check.names=FALSE)
 # Application header & title ----------------------------------------------
 header <- dashboardHeader(title = "Bigfoot Sightings",
@@ -46,8 +47,12 @@ header <- dashboardHeader(title = "Bigfoot Sightings",
                 choices = c("Class A", "Class B"),
                 selected = c("Class A", "Class B"),
                 justified = TRUE, status = "primary",
-                checkIcon = list(yes = icon("ok", lib = "glyphicon"), no = icon("remove", lib = "glyphicon"))
-            )
+                color = 'green',
+                checkIcon = list(yes = icon("ok", lib = "glyphicon"), 
+                                 no = icon("remove", lib = "glyphicon"))
+            ),
+            bsTooltip(id = "class_button", title = "<strong>Class A</strong><br> <i>Reports of clear sightings.</i><br><br> <strong>Class B</strong><br> <i>Observations without a clear view.</i>",
+                      placement = "bottom", trigger = "hover")
         )
     )
 
@@ -67,13 +72,21 @@ body <- dashboardBody(
     tabItems(
     tabItem("intro",
             fluidPage(
+                fluidRow(
                 imageOutput("image")
                     # box(
                     #     title = "In the Forest", status = "primary", solidHeader = TRUE,
                     #     imageOutput("image"), width = 4
                     # )
-                )
+                ),
+            
+            fluidRow(
+                infoBoxOutput("count"),
+                infoBoxOutput("month"),
+                valueBoxOutput("state")
             )
+            )
+    )
             ,
     # Plot page ----------------------------------------------
     tabItem("plot",
@@ -118,8 +131,8 @@ server <- function(input, output) {
 
     output$image <- renderImage({
             return(list(
-                src = "www/stabalized.gif",
-                contentType = 'image/gif',
+                src = "sasquatch.jpg",
+                contentType = 'image/jpeg',
                 alt = "Is this Bigfoot?"
             ))
         }, deleteFile = FALSE)
@@ -176,9 +189,20 @@ server <- function(input, output) {
     
     
     # Mass mean info box ----------------------------------------------
-    output$mass <- renderInfoBox({
+    output$count <- renderInfoBox({
         sw <- swInput()
         num <- round(mean(sw$mass, na.rm = T), 2)
+        
+
+        
+        infoBox("Avg Mass", value = num, subtitle = paste(nrow(sw), "characters"), icon = icon("balance-scale"), color = "purple")
+    })
+    
+    output$state <- renderInfoBox({
+        sw <- swInput()
+        num <- round(mean(sw$mass, na.rm = T), 2)
+        
+        
         
         infoBox("Avg Mass", value = num, subtitle = paste(nrow(sw), "characters"), icon = icon("balance-scale"), color = "purple")
     })
