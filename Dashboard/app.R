@@ -204,7 +204,7 @@ server <- function(input, output) {
      
 # Data table of Bigfoot Sightings ----------------------------------------------
     output$table <- DT::renderDataTable({
-        state_count()
+        data()
     })
 
 # A plot showing sightings by state -----------------------------    
