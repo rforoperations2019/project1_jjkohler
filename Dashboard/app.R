@@ -261,8 +261,9 @@ server <- function(input, output) {
     })    
         
     output$state <- renderValueBox({
-        val <- tail(state_count()$State, n=1)
-        valueBox(subtitle = "Most Common State", value = val, icon = icon("flag"), color = "green")
+        st <- tail(state_count()$State, n=1)
+        val <- tail(state_count()$Count, n=1)
+        valueBox(subtitle = paste("Top State with", val,'Sightings'), value = st, icon = icon("flag"), color = "green")
     })
     
 }
