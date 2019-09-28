@@ -8,7 +8,11 @@ library(shinyWidgets)
 library(shinyalert)
 bigfoot <- read.csv("bigfoot.csv", check.names=FALSE)
 # Application header & title ----------------------------------------------
-header <- dashboardHeader(title = "Bigfoot Sightings"
+header <- dashboardHeader(title = "Bigfoot Sightings",
+                          dropdownMenu(type = "messages",
+                                       notificationItem(text = "New Sasquatch sighting!", 
+                                                        icon = icon("users"))
+                          )
                           
                           
 )
@@ -63,11 +67,11 @@ body <- dashboardBody(
     tabItems(
     tabItem("intro",
             fluidPage(
-              
-                    box(
-                        title = "Alignment", status = "primary", solidHeader = TRUE,
-                        imageOutput("image")
-                    )
+                imageOutput("image")
+                    # box(
+                    #     title = "In the Forest", status = "primary", solidHeader = TRUE,
+                    #     imageOutput("image"), width = 4
+                    # )
                 )
             )
             ,
@@ -83,8 +87,8 @@ body <- dashboardBody(
             # Plot ----------------------------------------------
             fluidRow(
                 tabBox(title = "Plot",
-                       width = 12,
-                       tabPanel("Mass", plotlyOutput("plot_mass")),
+                       width = 8,
+                       tabPanel("State", plotlyOutput("plot_state")),
                        tabPanel("Height", plotlyOutput("plot_height")))
             )
     ),
@@ -102,29 +106,24 @@ ui <- dashboardPage(header, sidebar, body, skin='green')
 # Define server function required to create plots and value boxes -----
 server <- function(input, output) {
     
-    # observeEvent(input$class_button, {
-    #     if (isFALSE(input$class_button)) {
-    #                 # Show a modal when the button is pressed
-    #     shinyalert("Oops!", "Something went wrong.", type = "error")
-    #     }
-        
-        observeEvent(input$class_button, {
+
+        observeEvent(input$class_button, ignoreNULL = FALSE,{
             if (length(input$class_button)==0) {
-            shinyalert("Oops!", "Something went wrong.", type = "error")
+                cat('something is happening')
+            shinyalert("Oops!", "You won't have any sightings if you don't pick at least one class.", type = "error")
             }
+
         }
         )
-    # })
+
     output$image <- renderImage({
             return(list(
-                src = "sasquatch.jpg",
-                filetype = "image/jpeg",
+                src = "www/stabalized.gif",
+                contentType = 'image/gif',
                 alt = "Is this Bigfoot?"
             ))
-        },deleteFile = FALSE)
-        
-    # output$picture <- renderImage({return(list(src = "sasquatch.jpg",contentType = "image/jpg",
-    #                                            alt = "Alignment"))}, deleteFile = FALSE)
+        }, deleteFile = FALSE)
+
     
     data <- reactive({
         validate(
@@ -139,47 +138,42 @@ server <- function(input, output) {
     
     }
     )
+    
+    # Aggregating from to State Level
+    state_count <- reactive({count <- aggregate(x = data()[c('State','Year')],
+                               by = list(states = data()$State),FUN = length)
+                            count <- count[order(count$Year),]
+                            count
+
+    })
      
-    # # Reactive data function -------------------------------------------
-    # swInput <- reactive({
-    #     starwars <- starwars.load %>%
-    #         
-    #         # Slider Filter ----------------------------------------------
-    #     filter(birth_year >= input$birthSelect[1] & birth_year <= input$birthSelect[2])
-    #     
-    #     # Homeworld Filter ----------------------------------------------
-    #     if (length(input$worldSelect) > 0 ) {
-    #         starwars <- subset(starwars, homeworld %in% input$worldSelect)
-    #     }
-    #     
-    #     # Return dataframe ----------------------------------------------
-    #     return(starwars)
-    # })
-    # 
-    # # Reactive melted data ----------------------------------------------
-    # mwInput <- reactive({
-    #     swInput() %>%
-    #         melt(id = "name")
-    # })
-    
-    # A plot showing the mass of characters -----------------------------
-    output$plot_mass <- renderPlotly({
-        dat <- subset(mwInput(), variable == "mass")
-        
-        # Generate Plot ----------------------------------------------
-        ggplot(data = dat, aes(x = name, y = as.numeric(value), fill = name)) + geom_bar(stat = "identity")
-    })
-    
-    # A plot showing the height of characters -----------------------------------
-    output$plot_height <- renderPlotly({
-        dat <- subset(mwInput(),  variable == "height")
-        ggplot(data = dat, aes(x = name, y = as.numeric(value), fill = name)) + geom_bar(stat = "identity")
-    })
-    
     # Data table of characters ----------------------------------------------
     output$table <- DT::renderDataTable({
         data()
     })
+
+    # A plot showing the mass of characters -----------------------------
+    # output$plot_state <- renderPlotly({
+    #     p <- plot_ly(
+    #         x = state_count()$states,
+    #         y = state_count()$Year,
+    #         name = "SF Zoo",
+    #         type = "bar"
+    #     )
+    #     
+    # 
+    # })
+    
+    output$plot_state <- renderPlotly({
+      ggplotly(  
+        p1 <- ggplot(state_count(), aes(x = reorder(states, -Year), y = Year)) + geom_bar(stat = "identity") +
+            theme(axis.text.x = element_text(angle = 90, hjust = 1))
+      )
+    })
+
+
+
+    
     
     # Mass mean info box ----------------------------------------------
     output$mass <- renderInfoBox({
