@@ -30,26 +30,21 @@ header <- dashboardHeader(title = "Bigfoot Sightings",
             menuItem("Bigfoot at a Glance", icon = icon("tree"), tabName = "intro"),
             menuItem("Bigfeet Plots", icon = icon("bar-chart"), tabName = "plot"),
             menuItem("Sasquatch Table", icon = icon("table"), tabName = "table"),
-            # 
-            # # Inputs: select variables to plot ----------------------------------------------
-            # selectInput("worldSelect",
-            #             "Homeworld:",
-            #             choices = sort(unique(starwars.load$homeworld)),
-            #             multiple = TRUE,
-            #             selectize = TRUE,
-            #             selected = c("Naboo", "Tatooine")),
-            # 
-            # # Birth year Selection ----------------------------------------------
+
+            #Year Selection ----------------------------------------------
             chooseSliderSkin("HTML5", color="SaddleBrown"),
             sliderInput("slider2", label = h4("Sighting Years"), min = 1920, 
                         max = 2018, value = c(1920, 2018), sep = ''),
             
+            #Season Selection --------------------------------------------
             prettyCheckboxGroup(inputId='season', label= h4("Season of Sighting"), choices = c('Spring','Summer','Fall','Winter'), 
                                 selected = c('Spring','Summer','Fall','Winter'),
                                 status = "default", shape = "curve",
                                 outline = FALSE, fill = FALSE, thick = TRUE, animation = 'pulse',
                                 icon = NULL, plain = FALSE, bigger = FALSE, inline = FALSE,
                                 width = NULL, choiceNames = NULL, choiceValues = NULL),
+            
+            #Class Selection --------------------------------------------
             checkboxGroupButtons(
                 inputId = "class_button", label = h4("Choose Sighting Class :"), 
                 choices = c("Class A", "Class B"),
@@ -58,6 +53,8 @@ header <- dashboardHeader(title = "Bigfoot Sightings",
                 checkIcon = list(yes = icon("ok", lib = "glyphicon"), 
                                  no = icon("remove", lib = "glyphicon"))
             ),
+            
+            #Class Tooltip ----------------
             bsTooltip(id = "class_button", title = "<strong>Class A</strong><br> <i>Reports of clear sightings.</i><br><br> <strong>Class B</strong><br> <i>Observations without a clear view.</i>",
                       placement = "bottom", trigger = "hover")
         )
@@ -74,21 +71,24 @@ body <- dashboardBody(
         font-weight: bold;
         font-size: 24px;
       }
+          .small-box {height: 100px}
+          .info-box {min-height: 100px;}
+          .info-box-icon {height: 100px; line-height: 100x;} 
+          .info-box-content {padding-top: 5px; padding-bottom: 0px;}
     ")))
+    # https://stackoverflow.com/questions/35422946/r-shinydashboard-change-height-of-valuebox
+    # https://stackoverflow.com/questions/37861234/adjust-the-height-of-infobox-in-shiny-dashboard
     ,
     tabItems(
     tabItem("intro",
             fluidPage(
-                fluidRow(
-                imageOutput("image")
-                    # box(
-                    #     title = "In the Forest", status = "primary", solidHeader = TRUE,
-                    #     imageOutput("image"), width = 4
-                    # )
+                fluidRow(column(4,
+                imageOutput("image"))
+
                 ),
             
             fluidRow(
-                infoBoxOutput("count"),
+                valueBoxOutput("count"),
                 infoBoxOutput("month"),
                 valueBoxOutput("state")
             )
@@ -98,23 +98,13 @@ body <- dashboardBody(
     # Plot page ----------------------------------------------
     tabItem("plot",
             
-            # # Input and Value Boxes ----------------------------------------------
-            # fluidRow(
-            #     infoBoxOutput("mass"),
-            #     valueBoxOutput("height")
-            # ),
-            # 
-            # Plot ----------------------------------------------
+
+            # Plots ----------------------------------------------
             fluidRow(
-                box(plotlyOutput("plot_state"), width = 8)),
+                box(plotlyOutput("plot_state"), width = 9)),
             fluidRow(
-                box(plotlyOutput("plot_year"), width = '7'),
-                box(plotlyOutput("plot_month"), width = '4'))
-                # tabBox(title = "Plot",
-                #        width = 8,
-                #        tabPanel("State", plotlyOutput("plot_state")),
-                #        tabPanel("Height", plotlyOutput("plot_year")))
-            
+                box(plotlyOutput("plot_year"), width = '6'),
+                box(plotlyOutput("plot_month"), width = '3'))
     ),
     
     # Data Table Page ----------------------------------------------
@@ -191,7 +181,7 @@ server <- function(input, output) {
     
     })
     
-# Aggregating sightings by year for plotting
+# Aggregating sightings by month for plotting
     month_count <- reactive({count <- aggregate(x = data()[c('State','Month')],
                                                by = list(months = data()$Month),FUN = length)
     colnames(count) <- c('Month1','Count','State')
@@ -200,10 +190,19 @@ server <- function(input, output) {
     count
 
     })
+    # Aggregating sightings by month for sorted by value
+    month_max <- reactive({count <- aggregate(x = data()[c('State','Month')],
+                                                by = list(months = data()$Month),FUN = length)
+    colnames(count) <- c('Month1','Count','State')
+    count <- count[order(count$Count),]
+    count$Month <- month.name[count$Month1]
+    count
+    
+    })
      
     # Data table of Bigfoot Sightings ----------------------------------------------
     output$table <- DT::renderDataTable({
-        data()
+        state_count()
     })
 
 
@@ -246,48 +245,61 @@ server <- function(input, output) {
     })
     
     
-    
-    # output$plot_month<- renderPlot({
-    #     theme_set(theme_classic())
-    # p <- ggplot(month_count(), aes(x= Month, y= Count)) +
-    #     geom_point(col="tomato2", size=3)   # Draw points
-    # # geom_segment(aes(x=Month,
-    # #                  xend=Month,
-    # #                  y=min(Count),
-    # #                  yend=max(Count)),
-    # #              linetype="dashed",
-    # #              size=0.1) +   # Draw dashed lines
-    # # labs(title="Dot Plot",
-    # #      subtitle="Make Vs Avg. Mileage",
-    # #      caption="") +
-    # # coord_flip()
-    # })
-    # Mass mean info box ----------------------------------------------
-    output$count <- renderInfoBox({
-        sw <- swInput()
-        num <- round(mean(sw$mass, na.rm = T), 2)
-        
+        # Mass mean value box ----------------------------------------------
+    output$count <- renderValueBox({
+        val <- length(data()$Date)
+        valueBox(subtitle = "Total Sightings", value = val, icon = icon("tree"), color = "green")
+    })
 
+    output$month <- renderInfoBox({
+        val <- tail(month_max()$State, n=1)
+        mn <- tail(month_max()$Month, n=1)
         
-        infoBox("Avg Mass", value = num, subtitle = paste(nrow(sw), "characters"), icon = icon("balance-scale"), color = "purple")
+        infoBox("Peak Month", value = mn, subtitle = paste(val, " Sightings", sep = ''), icon = icon("calendar-alt"), color = "olive")
+    })    
+        
+    output$state <- renderValueBox({
+        val <- tail(state_count()$State, n=1)
+        valueBox(subtitle = "Most Common State", value = val, icon = icon("flag"), color = "green")
     })
     
-    output$state <- renderInfoBox({
-        sw <- swInput()
-        num <- round(mean(sw$mass, na.rm = T), 2)
-        
-        
-        
-        infoBox("Avg Mass", value = num, subtitle = paste(nrow(sw), "characters"), icon = icon("balance-scale"), color = "purple")
-    })
+    # output$month <- renderValueBox({
+    #     val <- tail(month_max()$State, n=1)
+    #     mn <- tail(month_max()$Month, n=1)
+    #     cat(val)
+    #     
+    #     valueBox(subtitle = mn, value = val, icon = icon("sort-numeric-asc"), color = "green")
+    # })
+    
+    # output$state <- renderValueBox({
+    #     val <- length(data()$Date)
+    #     
+    #     valueBox(subtitle = "Sightings", value = val, icon = icon("sort-numeric-asc"), color = "green")
+    # })
+    
+
+    
+    # output$state <- renderInfoBox({
+    #     val <- toString(state_count()$states[1])
+    #     cat(val)
+    #     
+    #             infoBox("Avg Mass", value = val, subtitle = paste(nrow(state_count()), "States"), icon = icon("balance-scale"), color = "purple")
+    # })
+    
+    # output$state <- renderInfoBox({
+    #     sw <- swInput()
+    #     num <- round(mean(sw$mass, na.rm = T), 2)
+    #     
+    #     infoBox("Avg Mass", value = num, subtitle = paste(nrow(sw), "characters"), icon = icon("balance-scale"), color = "purple")
+    # })
     
     # Height mean value box ----------------------------------------------
-    output$height <- renderValueBox({
-        sw <- swInput()
-        num <- round(mean(sw$height, na.rm = T), 2)
-        
-        valueBox(subtitle = "Avg Height", value = num, icon = icon("sort-numeric-asc"), color = "green")
-    })
+    # output$height <- renderValueBox({
+    #     sw <- swInput()
+    #     num <- round(mean(sw$height, na.rm = T), 2)
+    #     
+    #     valueBox(subtitle = "Avg Height", value = num, icon = icon("sort-numeric-asc"), color = "green")
+    # })
 
 
 
