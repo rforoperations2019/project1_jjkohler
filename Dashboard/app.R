@@ -26,9 +26,9 @@ header <- dashboardHeader(title = "Bigfoot Sightings",
             id = "tabs",
             
             # # Menu Items ----------------------------------------------
-            menuItem("Intro", icon = icon("tree"), tabName = "intro"),
-            menuItem("Plot", icon = icon("bar-chart"), tabName = "plot"),
-            menuItem("Table", icon = icon("table"), tabName = "table"),
+            menuItem("Bigfoot at a Glance", icon = icon("tree"), tabName = "intro"),
+            menuItem("Bigfeet Plots", icon = icon("bar-chart"), tabName = "plot"),
+            menuItem("Sasquatch Table", icon = icon("table"), tabName = "table"),
             # 
             # # Inputs: select variables to plot ----------------------------------------------
             # selectInput("worldSelect",
@@ -42,12 +42,18 @@ header <- dashboardHeader(title = "Bigfoot Sightings",
             chooseSliderSkin("HTML5", color="SaddleBrown"),
             sliderInput("slider2", label = h4("Sighting Years"), min = 1920, 
                         max = 2018, value = c(1920, 2018), sep = ''),
+            
+            prettyCheckboxGroup(inputId='season', label= h4("Season of Sighting"), choices = c('Spring','Summer','Fall','Winter'), 
+                                selected = c('Spring','Summer','Fall','Winter'),
+                                status = "default", shape = "curve",
+                                outline = FALSE, fill = FALSE, thick = TRUE, animation = 'pulse',
+                                icon = NULL, plain = FALSE, bigger = FALSE, inline = FALSE,
+                                width = NULL, choiceNames = NULL, choiceValues = NULL),
             checkboxGroupButtons(
-                inputId = "class_button", label = "Make a choice :", 
+                inputId = "class_button", label = h4("Choose Sighting Class :"), 
                 choices = c("Class A", "Class B"),
                 selected = c("Class A", "Class B"),
                 justified = TRUE, status = "primary",
-                color = 'green',
                 checkIcon = list(yes = icon("ok", lib = "glyphicon"), 
                                  no = icon("remove", lib = "glyphicon"))
             ),
@@ -140,13 +146,15 @@ server <- function(input, output) {
     
     data <- reactive({
         validate(
-            need(input$class_button, "Select at least one class")
+            need(input$class_button, "Select at least one Class"),
+            need(input$season, "Select at least one Season")
         )
-        sub <- subset(bigfoot, select = c('state','season','date','title','classification', 'year')
+        sub <- subset(bigfoot, select = c('state','season','date','title','classification', 'year', 'season')
     ) 
-        colnames(sub) <- c('State', 'Season', 'Date', 'Description', 'Class', 'Year')
+        colnames(sub) <- c('State', 'Season', 'Date', 'Description', 'Class', 'Year', 'Season')
         sub <- sub[(sub['Year'] >= input$slider2[1]) & (sub['Year'] <= input$slider2[2]),]
         sub <- subset(sub, Class %in% input$class_button)
+        sub <- subset(sub, Season %in% input$season)
         sub
     
     }
