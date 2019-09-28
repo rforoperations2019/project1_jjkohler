@@ -88,10 +88,12 @@ body <- dashboardBody(
                 ),
             
             fluidRow(
-                valueBoxOutput("count"),
-                infoBoxOutput("month"),
-                valueBoxOutput("state")
-             )
+                valueBoxOutput("count")),
+            fluidRow(
+                infoBoxOutput("month")),
+            fluidRow(
+                valueBoxOutput("state"))
+             
          )
     ),
     # Plot page ----------------------------------------------
@@ -110,7 +112,7 @@ body <- dashboardBody(
     # Data Table Page ----------------------------------------------
     tabItem("table",
             fluidPage(
-                box(title = "Reported Bigfoot Sightings", DT::dataTableOutput("table"), width = 12))
+                box(title = "Reported Bigfoot Sightings", DT::dataTableOutput("table"), width = 9))
         )
     )
 )
