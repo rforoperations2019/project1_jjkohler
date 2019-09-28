@@ -124,11 +124,17 @@ ui <- dashboardPage(header, sidebar, body, skin='green')
 
 # Define server function required to create plots and value boxes -----
 server <- function(input, output) {
-    
-
+    #Error if no Season is chosen
+        observeEvent(input$season, ignoreNULL = FALSE,{
+            if (length(input$season)==0) {
+            shinyalert("Oh No!", "The Sasquatch may just hibernate or go south if you don't choose a season.", type = "warning")
+        }
+        
+    }
+    )
+    #Error if no Class is chosen 
         observeEvent(input$class_button, ignoreNULL = FALSE,{
             if (length(input$class_button)==0) {
-                cat('something is happening')
             shinyalert("Oops!", "You won't have any sightings if you don't pick at least one class.", type = "error")
             }
 
@@ -163,6 +169,7 @@ server <- function(input, output) {
     # Aggregating from to State Level
     state_count <- reactive({count <- aggregate(x = data()[c('State','Year')],
                                by = list(states = data()$State),FUN = length)
+                            colnames(count) <- c('State', 'Count','Year')
                             count <- count[order(count$Year),]
                             count
 
@@ -187,8 +194,11 @@ server <- function(input, output) {
     
     output$plot_state <- renderPlotly({
       ggplotly(  
-        p1 <- ggplot(state_count(), aes(x = reorder(states, -Year), y = Year)) + geom_bar(stat = "identity") +
-            theme(axis.text.x = element_text(angle = 90, hjust = 1))
+        p1 <- ggplot(state_count(), aes(x = reorder(State, -Count), y = Count, label=State)) +
+            geom_bar(stat = "identity") +
+            theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+            xlab("State") + 
+            ylab("Count of Sightings"), tooltip=c('label','y')
       )
     })
 
